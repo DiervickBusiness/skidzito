@@ -1,0 +1,206 @@
+/* ===== DIERVICK V3 ===== */
+body { 
+    font-family: system-ui, -apple-system, sans-serif; 
+    margin: 0; 
+    background: #050505; 
+    color: #cbd5e1;
+    /* Proteção para áreas seguras no Mobile (Notch do iPhone e barras do Android) */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+}
+
+.modal {
+    position: fixed; inset: 0; background: rgba(0,0,0,.6);
+    display: none; align-items: center; justify-content: center; z-index: 1000;
+}
+.modal.flex { display: flex; }
+.modal-content {
+    background: #0f172a; padding: 20px; border-radius: 8px; width: 90%; max-width: 500px;
+    border: 1px solid #334155; box-shadow: 0 25px 50px -12px rgba(0,0,0,.5);
+}
+.modal .close { float: right; font-size: 24px; cursor: pointer; color: #94a3b8; }
+.modal input, .modal textarea, .modal select {
+    width: 100%; padding: 8px; margin: 8px 0; box-sizing: border-box;
+    background: #1e293b; border: 1px solid #334155; color: #cbd5e1; border-radius: 6px;
+}
+
+.tabela-diervick { 
+    width: 100%; border-collapse: collapse; background: #0f172a; 
+    border: 1px solid #1e293b; border-radius: 8px; overflow: hidden;
+}
+.tabela-diervick th, .tabela-diervick td { 
+    padding: 10px; border-bottom: 1px solid #1e293b; text-align: left; font-size: 12px;
+}
+.tabela-diervick th { background: #1e293b; color: #94a3b8; font-weight: 600; }
+.tabela-diervick tr:hover { background: #1e293b; }
+
+.badge { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+.status-pendente { background: #fbbf24; color: #78350f; }
+.status-em_progresso { background: #60a5fa; color: #1e3a8a; }
+.status-concluido { background: #4ade80; color: #14532d; }
+
+.toolbar { margin: 16px 0; display: flex; gap: 10px; flex-wrap: wrap; }
+.toolbar input, .toolbar select { 
+    padding: 8px; background: #1e293b; border: 1px solid #334155; 
+    color: #cbd5e1; border-radius: 6px; font-size: 12px;
+}
+
+.checkbox-label { display: block; margin: 6px 0; font-size: 12px; }
+.role-badge { font-size: 10px; background: #334155; padding: 1px 6px; border-radius: 3px; margin-left: 4px; }
+
+.btn-edit, .btn-del { 
+    background: none; border: none; cursor: pointer; font-size: 16px; 
+    padding: 4px; border-radius: 4px; transition: background .2s;
+}
+.btn-edit:hover { background: #1e293b; }
+.btn-del:hover { background: #7f1d1d; }
+.staff-only, .admin-only { /* JS controla display */ }
+
+/* ===== FILE MANAGER ===== */
+.file-card {
+    background: linear-gradient(to bottom right, #1e293b, #0f172a);
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 12px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,.3);
+    text-align: center;
+}
+.file-card:hover {
+    box-shadow: 0 10px 15px -3px rgba(59,130,246,.2);
+    border-color: #3b82f6;
+    transform: translateY(-2px);
+}
+.file-card:active { transform: scale(0.95); }
+.file-card .icon { font-size: 2.5rem; line-height: 1; }
+.file-card .nome { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; }
+.file-card.folder .icon { color: #60a5fa; }
+.file-card.file .icon { color: #94a3b8; }
+.file-card:hover .icon { color: #93c5fd; }
+
+.context-menu {
+    position: absolute;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,.5);
+    padding: 4px 0;
+    z-index: 110;
+    min-width: 160px;
+}
+.context-menu button {
+    width: 100%;
+    text-align: left;
+    padding: 8px 16px;
+    font-size: 12px;
+    background: none;
+    border: none;
+    color: #cbd5e1;
+    cursor: pointer;
+    transition: background .15s;
+}
+.context-menu button:hover { background: #334155; color: #fff; }
+.context-menu button.danger { color: #f87171; }
+.context-menu button.danger:hover { background: #7f1d1d; }
+
+.CodeMirror { height: 100%!important; font-size: 13px; background: #020617!important; }
+.CodeMirror-gutters { background-color: #0f172a !important; border-right: 1px solid #334155 !important; }
+
+/* 2. MULTI-SELECT */
+.file-card.selecionado {
+    outline: 2px solid #3b82f6;
+    box-shadow: 0 1px #3b82f6;
+    background: rgba(59,130,246,0.1);
+}
+
+/* 4. DRAG & DROP */
+.drag-over {
+    border: 2px dashed #3b82f6!important;
+    background: rgba(59,130,246,0.1)!important;
+}
+
+/* 3. THUMBNAIL */
+.thumb-preview {
+    pointer-events: none;
+}
+
+/* MENU CONTEXTO */
+.context-menu {
+    position: fixed;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    z-index: 100;
+    padding: 4px 0;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.5);
+}
+.context-menu button {
+    display: block;
+    width: 100%;
+    padding: 8px 16px;
+    text-align: left;
+    font-size: 12px;
+    transition: background 0.1s;
+}
+.context-menu button:hover {
+    background: #334155;
+}
+.context-menu button.danger {
+    color: #ef4444;
+}
+.context-menu button.danger:hover {
+    background: rgba(239,68,0.1);
+}
+
+/* 8. BREADCRUMB */
+#breadcrumb {
+    scrollbar-width: thin;
+}
+.crumb {
+    transition: color 0.15s;
+}
+
+/* 6. SCROLL INFINITO - LOADING INDICATOR */
+#lista.loading::after {
+    content: 'Carregando mais...';
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 16px;
+    color: #64748b;
+}
+
+/* ===== FIX SCROLL CODEMIRROR NO MODAL ===== */
+#modal-content {
+    display: flex;
+    flex-direction: column;
+    min-height: 0; 
+}
+
+#modal-content .CodeMirror {
+    flex: 1;
+    height: 100% !important;
+    min-height: 400px;
+}
+
+#modal-content .CodeMirror-scroll {
+    min-height: 400px;
+}
+
+/* Garante que o modal ocupe tela toda no mobile */
+@media (max-width: 768px) {
+    #modal-container .modal-content {
+        height: 100vh !important;
+        max-height: 100vh !important;
+        border-radius: 0;
+    }
+    #modal-content .CodeMirror {
+        min-height: calc(100vh - 80px);
+    }
+}

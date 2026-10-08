@@ -1,0 +1,7 @@
+pkg update && pkg upgrade
+
+pkg install python libjpeg-turbo zlib libpng libwebp freetype ffmpeg
+
+pip install --upgrade pip setuptools wheel
+pip install pillow==12.2.0 --only-binary :all:
+pip install -r requirements.txt

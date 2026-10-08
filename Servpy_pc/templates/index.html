@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Diervick Cluster v3</title>
+
+    <!-- CodeMirror -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/markdown/markdown.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/yaml/yaml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/shell/shell.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/sql/sql.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { mono: ['Fira Code', 'monospace'] },
+                    animation: {
+                        'spin-fast': 'spin 0.6s linear infinite',
+                        'fade-in': 'fadeIn 0.2s ease-out',
+                        'slide-up': 'slideUp 0.3s ease-out'
+                    },
+                    keyframes: {
+                        fadeIn: { '0%': { opacity: 0, transform: 'translateY(5px)' }, '100%': { opacity: 1, transform: 'translateY(0)' } },
+                        slideUp: { '0%': { transform: 'translateY(100%)', opacity: 0 }, '100%': { transform: 'translateY(0)', opacity: 1 } }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+    <!-- CSS Próprio -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body class="bg-[#050505] text-slate-300 font-mono text-xs selection:bg-blue-500/30">
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-[200] space-y-2"></div>
+
+    <!-- Overlay Mobile -->
+    <div id="overlay" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[90] md:hidden"></div>
+
+    <!-- Loading Modal -->
+    <div id="loading-modal" class="hidden fixed inset-0 bg-black/80 z-[150] flex items-center justify-center">
+        <div class="bg-slate-900/90 p-6 rounded-2xl border border-blue-500/20 w-72 text-center">
+            <p id="loading-msg" class="mb-4 tracking-tighter text-blue-400">SINCRONIZANDO...</p>
+            <div class="w-full bg-slate-800/50 rounded-full h-1.5 overflow-hidden">
+                <div id="progress-bar" class="bg-blue-500 h-full transition-all duration-500" style="width:0%"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Layout Principal -->
+    <div class="flex h-screen overflow-hidden">
+
+        <!-- Sidebar Esquerda -->
+        <aside id="sidebar-left" class="fixed md:relative h-full z-[95] w-60 bg-[#0a0a0a] border-r border-slate-800/50 p-4 flex flex-col gap-6 -translate-x-full md:translate-x-0 transition-transform duration-300">
+            <div class="flex-shrink-0 pb-4 border-b border-slate-700">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h1 class="text-blue-500 font-black tracking-tighter text-lg">DIERVICK</h1>
+                        <p class="text-slate-500">CONECTADO: <span class="text-slate-300 username-display">{{ user }}</span></p>
+                        <p class="text-slate-500">ROLE: <span id="user-role" class="text-blue-400">{{ role }}</span></p>
+                    </div>
+                    <button id="btn-fechar-left" class="md:hidden text-slate-500 hover:text-white text-xl">✕</button>
+                </div>
+            </div>
+
+            <nav class="mt-6 space-y-2 flex-1 overflow-y-auto">
+                <button id="btn-terminal" class="w-full text-left p-3 bg-gradient-to-br from-blue-900 to-blue-950 border border-blue-600 rounded-lg text-blue-300 font-semibold text-xs hover:shadow-blue-500/50 transition-all">
+                    💻 TERMINAL
+                </button>
+                <button id="btn-seo" class="w-full text-left p-3 bg-gradient-to-br from-indigo-900 to-indigo-950 border border-indigo-600 rounded-lg text-indigo-300 font-semibold text-xs">
+                    📊 SEO AUDIT
+                </button>
+                <button id="btn-users" class="admin-only w-full text-left p-3 bg-gradient-to-br from-green-900 to-green-950 border border-green-600 rounded-lg text-green-300 font-semibold text-xs">
+                    👥 USUÁRIOS
+                </button>
+                <a href="/logout" class="w-full text-left p-3 bg-gradient-to-br from-red-900 to-red-950 border border-red-600 rounded-lg text-red-300 font-semibold text-xs block">
+                    🚪 LOGOUT
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main -->
+        <main class="flex-1 flex flex-col bg-[#050505] w-full">
+            <!-- Header -->
+            <header class="h-14 border-b border-slate-800/50 flex items-center px-3 md:px-4 justify-between bg-slate-900/80 backdrop-blur-xl z-10 gap-2 flex-shrink-0">
+                <div class="flex items-center gap-2 min-w-0">
+                    <button id="btn-toggle-left" class="md:hidden w-10 h-10 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-400">☰</button>
+                    <div id="display-caminho" class="text-blue-400 font-bold text-xs md:text-sm truncate cursor-pointer">/root</div>
+                </div>
+
+                <div class="flex gap-1 md:gap-2">
+                    <button id="btn-toggle-view" class="bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-xs border border-slate-700">
+                        📁 ARQUIVOS
+                    </button>
+                    <label class="bg-slate-800 hover:bg-slate-700 px-3 md:px-4 py-1.5 rounded-lg cursor-pointer text-xs border border-slate-700">
+                        UPLOAD <input type="file" class="hidden" id="input-upload" multiple>
+                    </label>
+                    <button id="btn-nova-tarefa" class="staff-only bg-gradient-to-br from-blue-600 to-blue-700 px-3 md:px-4 py-1.5 rounded-lg font-bold text-xs">+ TAREFA</button>
+                    <button id="btn-toggle-right" class="md:hidden w-10 h-10 bg-slate-800 border border-slate-700 rounded-lg text-slate-400">☰</button>
+                </div>
+            </header>
+
+            <!-- SEÇÃO ARQUIVOS -->
+            <section id="section-arquivos" class="flex flex-col flex-1 p-3 md:p-4 overflow-hidden">
+
+                <!-- CONTROLES FM: BUSCA + RECURSIVA + ORDENAÇÃO + FILTRO + SELECIONAR -->
+                <div id="controles-fm" class="flex gap-2 flex-wrap mb-3">
+                    <input id="input-busca" type="text" placeholder="Buscar..." class="bg-slate-800 text-slate-200 px-3 py-1.5 rounded-lg text-xs flex-1 md:flex-none md:w-48 outline-none border border-slate-700 focus:border-blue-500">
+
+                    <label class="flex items-center gap-1 text-xs bg-slate-800 px-2 rounded border border-slate-700 cursor-pointer hover:bg-slate-700">
+                        <input type="checkbox" id="busca-recursiva" class="accent-blue-500"> Recursiva
+                    </label>
+
+                    <select id="ordenar-por" class="bg-slate-800 px-2 py-1.5 rounded-lg text-xs border border-slate-700 hover:bg-slate-700 cursor-pointer">
+                        <option value="nome">Nome</option>
+                        <option value="tamanho">Tamanho</option>
+                        <option value="data">Data</option>
+                        <option value="tipo">Tipo</option>
+                    </select>
+
+                    <select id="filtro-tipo" class="bg-slate-800 px-2 py-1.5 rounded-lg text-xs border border-slate-700 hover:bg-slate-700 cursor-pointer">
+                        <option value="">Todos</option>
+                        <option value="folder">Pastas</option>
+                        <option value="image">Imagens</option>
+                        <option value="video">Vídeos</option>
+                    </select>
+
+                    <button id="btn-toggle-selecao" class="bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg text-xs font-bold">
+                        Selecionar
+                    </button>
+                </div>
+
+                <!-- TOOLBAR MULTI-SELECT -->
+                <div id="toolbar-selecao" class="hidden flex gap-2 mb-2 p-2 bg-slate-800/50 rounded border border-blue-500/30 items-center">
+                    <span id="contador-selecao" class="text-xs text-blue-400 font-bold"></span>
+                    <button id="btn-deletar-lote" class="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-xs font-bold">🗑️ Lixeira</button>
+                    <button id="btn-compactar-lote" class="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-xs font-bold">📦 ZIP</button>
+                    <button id="btn-cancelar-selecao" class="px-3 py-1 bg-slate-600 hover:bg-slate-700 rounded text-xs ml-auto">Cancelar</button>
+                </div>
+
+                <!-- BREADCRUMB + INFO DISCO -->
+                <div class="flex justify-between items-center mb-2 text-xs">
+                    <div id="breadcrumb" class="text-slate-400 flex-1 overflow-x-auto whitespace-nowrap"></div>
+                    <div id="info-disco" class="text-slate-500 flex-shrink-0 ml-2"></div>
+                </div>
+
+                <!-- PROGRESSO UPLOAD -->
+                <div id="upload-progresso" class="hidden p-2 bg-blue-500/10 border border-blue-500/30 rounded mb-2 text-xs text-blue-400"></div>
+
+                <!-- INPUT BUSCA MOBILE -->
+                <input id="input-busca-mobile" type="text" placeholder="Buscar arquivos..." class="bg-slate-800 text-slate-200 px-3 py-2 rounded-lg text-xs w-full mb-3 md:hidden outline-none border border-slate-700 focus:border-blue-500">
+
+                <!-- LISTA -->
+                <div id="lista" class="flex-1 overflow-y-auto grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2 md:gap-3 pb-4"></div>
+            </section>
+
+            <!-- SEÇÃO TAREFAS -->
+            <section id="section-tarefas" class="hidden flex-1 p-3 md:p-4 overflow-hidden">
+                <div class="toolbar staff-only mb-3 flex gap-2">
+                    <input type="search" placeholder="Buscar..." oninput="buscarTarefas(this.value)" class="flex-1 bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-xs">
+                    <select onchange="filtrarTarefas(this.value)" class="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-xs">
+                        <option value="todos">Todas</option>
+                        <option value="pendente">Pendentes</option>
+                        <option value="em_progresso">Em Progresso</option>
+                        <option value="concluido">Concluídas</option>
+                    </select>
+                </div>
+                <div class="flex-1 overflow-y-auto">
+                    <table id="tabela-tarefas" class="tabela-diervick w-full text-sm">
+                        <thead>
+                            <tr class="bg-slate-800/50">
+                                <th class="text-left p-2">ID</th>
+                                <th class="text-left p-2">Título</th>
+                                <th class="text-left p-2">Descrição</th>
+                                <th class="text-left p-2">Usuários</th>
+                                <th class="text-left p-2">Status</th>
+                                <th class="text-left p-2">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="6" class="text-center p-4 text-slate-500">Carregando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+
+        <!-- Sidebar Direita - FILA DE BUILD + ONLINE + CHAT -->
+        <aside id="sidebar-right" class="fixed md:relative h-full right-0 z-[95] w-72 bg-[#0a0a0a] border-l border-slate-800/50 flex flex-col translate-x-full md:translate-x-0 transition-transform duration-300">
+            <div class="p-4 flex justify-between items-center md:hidden border-b border-slate-800/50 flex-shrink-0">
+                <h3 class="text-xs text-slate-600 font-bold uppercase">Fila de Build</h3>
+                <button id="btn-fechar-right" class="text-slate-500 hover:text-white text-xl">✕</button>
+            </div>
+
+            <!-- FILA DE BUILD -->
+            <div class="p-4 flex-1 overflow-hidden flex flex-col">
+                <h3 class="text-xs text-slate-600 font-bold mb-3 uppercase hidden md:block">FILA DE BUILD</h3>
+                <div id="lista-tarefas" class="space-y-2 overflow-y-auto flex-1"></div>
+            </div>
+
+            <!-- Lista de usuários online -->
+            <div class="border-t border-slate-700 p-4">
+                <h3 class="text-xs text-slate-500 uppercase mb-2">ONLINE AGORA</h3>
+                <div id="lista-users-online" class="space-y-1 max-h-32 overflow-y-auto">
+                    <div class="text-slate-500 text-sm p-2">Ninguém online</div>
+                </div>
+            </div>
+
+            <!-- Chat -->
+            <div class="h-64 p-4 border-t border-slate-800/50 flex flex-col flex-shrink-0">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs text-slate-600 font-bold uppercase">CHAT</span>
+                    <span class="text-xs text-green-500">ONLINE: <b id="users-online">0</b></span>
+                </div>
+                <div id="chat-message" class="flex-1 overflow-y-auto text-xs space-y-2 mb-2"></div>
+                <input id="input-msg" placeholder="Mensagem..." maxlength="500" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 outline-none text-xs focus:border-blue-500">
+            </div>
+        </aside>
+    </div>
+
+    <!-- Modal Arquivo/Editor -->
+    <div id="modal-container" class="modal hidden fixed inset-0 bg-black/80 items-center justify-center z-[100]">
+        <div class="modal-content bg-slate-900/90 border border-slate-700 rounded-2xl w-full max-w-5xl h-full md:h-[90vh] flex flex-col overflow-hidden">
+            <div class="p-3 md:p-4 border-b border-slate-800 flex justify-between bg-slate-900/20 flex-shrink-0">
+                <span id="modal-title" class="font-bold text-blue-400 text-xs md:text-sm truncate"></span>
+                <div class="flex gap-2">
+                    <button id="btn-raw" class="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded text-xs">RAW</button>
+                    <button id="btn-save" class="bg-green-600 hover:bg-green-700 px-3 md:px-4 py-1 rounded text-xs">SALVAR</button>
+                    <button id="btn-fechar-modal" class="bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded">✕</button>
+                </div>
+            </div>
+            <div id="modal-content" class="flex-1 bg-black min-h-0"></div>
+        </div>
+    </div>
+           
+
+    <!-- Modal Tarefa -->
+    <div id="modal-tarefa" class="modal hidden fixed inset-0 bg-black/80 items-center justify-center z-[100]">
+        <div class="modal-content bg-slate-900 border border-slate-700 rounded-xl p-6 w-full max-w-md">
+            <span onclick="document.getElementById('modal-tarefa').classList.add('hidden');document.getElementById('modal-tarefa').classList.remove('flex')" class="close absolute top-4 right-4 text-slate-500 hover:text-white cursor-pointer text-2xl">✕</span>
+            <h3 id="modal-tarefa-titulo" class="text-blue-400 font-bold mb-4 text-lg">Nova Tarefa</h3>
+            <form id="form-tarefa" class="space-y-3">
+                <input type="hidden" name="id">
+                <input name="titulo" placeholder="Título" required class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm">
+                <textarea name="descricao" placeholder="Descrição" rows="3" class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm"></textarea>
+                <select name="status" class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm">
+                    <option value="pendente">Pendente</option>
+                    <option value="em_progresso">Em Progresso</option>
+                    <option value="concluido">Concluído</option>
+                </select>
+                <div id="usuarios-checkboxes" class="staff-only my-3 p-2 bg-slate-800 rounded max-h-32 overflow-y-auto"></div>
+                <div class="flex gap-2">
+                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 py-2 rounded font-bold text-xs">SALVAR</button>
+                    <button type="button" onclick="document.getElementById('modal-tarefa').classList.add('hidden');document.getElementById('modal-tarefa').classList.remove('flex')" class="btn-cancel flex-1 bg-slate-700 hover:bg-slate-600 py-2 rounded text-xs">CANCELAR</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal SEO -->
+    <div id="modal-seo" class="modal hidden fixed inset-0 bg-black/80 items-center justify-center z-[100]">
+        <div class="modal-content bg-slate-900 border border-slate-700 rounded-xl p-6 w-full max-w-md">
+             <div class="flex justify-between mb-4">
+                <span class="text-blue-400 font-bold">📊 SEO AUDIT</span>
+                <button id="btn-fechar-seo" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+             <input id="seo-url" placeholder="URL do Cliente" class="w-full bg-slate-800 border border-slate-700 p-2 rounded mb-3 text-xs">
+             <button id="btn-gerar-auditoria" class="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded font-bold text-xs">ANALISAR</button>
+             <div id="seo-result" class="hidden mt-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl text-center">
+                 <div id="seo-score" class="text-4xl font-black text-blue-400">--</div>
+                 <div class="text-xs opacity-50">SCORE DE OTIMIZAÇÃO</div>
+             </div>
+        </div>
+    </div>
+
+   <!-- Modal Usuários -->
+    <div id="modal-usuarios" class="modal hidden fixed inset-0 bg-black/80 items-center justify-center z-[100]">
+        <div class="modal-content bg-slate-900 border border-slate-700 rounded-xl w-full max-w-2xl flex flex-col">
+            <div class="flex items-center justify-between p-4 border-b border-slate-700">
+                <div class="text-lg font-bold text-blue-400">GERENCIAR USUÁRIOS</div>
+                <button id="btn-fechar-usuarios" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-bold">✖</button>
+            </div>
+            <div class="p-4 border-b border-slate-700">
+                <form id="form-usuario" class="grid grid-cols-1 md:grid-cols-4 gap-2">
+                    <input name="username" placeholder="Usuário" class="bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm">
+                    <input name="password" type="password" placeholder="Senha" class="bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm">
+                    <select name="role" class="bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm">
+                        <option value="user">user</option>
+                        <option value="admin">admin</option>
+                        <option value="super_admin">super_admin</option>
+                    </select>
+                    <button type="submit" class="bg-green-600 hover:bg-green-500 rounded px-3 py-2 text-sm font-bold">+ CRIAR</button>
+                </form>
+            </div>
+            <div class="flex-1 p-4 overflow-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-slate-400 border-b border-slate-700">
+                            <th class="pb-2">USUÁRIO</th>
+                            <th class="pb-2">ROLE</th>
+                            <th class="pb-2">STATUS</th>
+                            <th class="pb-2">AÇÃO</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-usuarios"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Terminal -->
+    <div id="command-center" class="hidden fixed inset-0 bg-black/95 z-[120] p-3 md:p-6">
+        <div class="max-w-4xl mx-auto h-full flex flex-col">
+            <div class="flex justify-between mb-4">
+                <span class="text-blue-500 font-bold">TERMINAL DIERVICK</span>
+                <button id="btn-fechar-terminal" class="text-red-500 hover:text-red-300 text-2xl">✕</button>
+            </div>
+            <div id="term-out" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-3 md:p-4 overflow-y-auto mb-4 text-xs leading-relaxed font-mono"></div>
+            <input id="terminal-input" placeholder="Comando..." class="bg-slate-900 border border-slate-800 w-full p-3 rounded-xl outline-none focus:border-blue-500 text-xs font-mono">
+        </div>
+    </div>
+
+    <!-- Scripts - ORDEM IMPORTA -->
+    {% if config.DEBUG %}
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+    <script>eruda.init();</script>
+    {% endif %}
+    <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/ui.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/ft.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/fm.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/sk.js') }}"></script>
+</body>
+</html>

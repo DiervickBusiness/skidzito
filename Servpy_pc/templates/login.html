@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LOGIN | DIERVICK</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #050505;
+            color: #e2e8f0;
+            font-family: ui-monospace, monospace;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        .login-card {
+            background: #0a0a0a;
+            padding: 2rem;
+            border-radius: 1rem;
+            border: 1px solid #1e293b;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            width: 20rem;
+            text-align: center;
+        }
+        .login-card h2 {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: #3b82f6;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.05em;
+        }
+        .login-card p {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-bottom: 1.5rem;
+        }
+        .login-card input {
+            width: 100%;
+            background: #000;
+            border: 1px solid #334155;
+            padding: 0.75rem;
+            border-radius: 0.75rem;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+            color: #e2e8f0;
+            outline: none;
+        }
+        .login-card input:focus { border-color: #3b82f6; }
+        .login-card button {
+            width: 100%;
+            background: #2563eb;
+            color: white;
+            padding: 0.75rem;
+            border-radius: 0.75rem;
+            font-weight: 700;
+            font-size: 0.75rem;
+            letter-spacing: 0.1em;
+            border: none;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .login-card button:hover { background: #3b82f6; }
+        #msg-erro {
+            color: #ef4444;
+            font-size: 0.75rem;
+            margin-top: 1rem;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <form action="/login" method="POST" class="login-card">
+        <h2>DIERVICK</h2>
+        <p>SISTEMA DE ACESSO LOCAL</p>
+        
+        <input type="text" name="usuario" placeholder="Utilizador" required>
+        <input type="password" name="senha" placeholder="Senha" required>
+        
+        <button type="submit">ENTRAR</button>
+        <div id="msg-erro"></div>
+    </form>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const loginForm = document.querySelector('form');
+        const erroDiv = document.getElementById('msg-erro');
+
+        loginForm.onsubmit = async (e) => {
+            e.preventDefault();
+            erroDiv.style.display = 'none';
+
+            const formData = new FormData(loginForm);
+            
+            try {
+                const res = await fetch('/login', {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.sucesso) {
+                        // O TRUQUE: Adiciona um parâmetro de tempo para forçar o navegador
+                        // a baixar os arquivos JS novos do index, evitando o cache velho.
+                        window.location.href = '/?v=' + new Date().getTime();
+                    } else {
+                        erroDiv.innerText = data.erro || "Acesso Negado";
+                        erroDiv.style.display = 'block';
+                    }
+                } else {
+                    erroDiv.innerText = "Usuário ou senha incorretos";
+                    erroDiv.style.display = 'block';
+                }
+            } catch (err) {
+                // Aqui é onde aparece a mensagem se o Python/Termux cair
+                erroDiv.innerText = "Servidor offline ou erro de rede!";
+                erroDiv.style.display = 'block';
+            }
+        };
+    });
+</script>
+
+</body>
+</html>

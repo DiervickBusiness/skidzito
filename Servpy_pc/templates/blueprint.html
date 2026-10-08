@@ -1,0 +1,45 @@
+<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+body{margin:0;overflow:hidden;background:#0a0a0a;color:#fff;font-family:monospace}
+#canvas{position:absolute;width:5000px;height:5000px;transform-origin:0 0;cursor:grab}
+#canvas.grabbing{cursor:grabbing}
+.node{position:absolute;background:#151515;border:1px solid #333;border-radius:10px;padding:8px;min-width:130px;max-width:170px;cursor:pointer}
+.node.fixado{border-color:#00ff88;box-shadow:0 0 12px rgba(0,255,136,.4);background:#0f1f18}
+.node img{width:100%;height:60px;object-fit:cover;border-radius:5px;margin-bottom:5px;background:#222}
+.node.t{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#toolbar{position:fixed;top:10px;left:10px;z-index:99;background:#111;border:1px solid #222;padding:8px 12px;border-radius:10px;display:flex;gap:8px}
+button{background:#00ff88;border:0;padding:6px 10px;border-radius:5px;font-weight:bold;cursor:pointer;color:#000}
+#info{font-size:11px;color:#888;margin-left:8px}
+</style></head><body>
+<div id=toolbar><button onclick=carregar()>RECARREGAR</button><button onclick="location.href='/api/arquivos?caminho=.'">GERENCIADOR</button><span id=info>carregando...</span></div>
+<div id=canvas></div>
+<script>
+let scale=1,panX=0,panY=0,sx=0,sy=0,drag=false
+const canvas=document.getElementById('canvas')
+function upd(){canvas.style.transform='translate('+panX+'px,'+panY+'px) scale('+scale+')'}
+canvas.addEventListener('wheel',e=>{e.preventDefault();let f=e.deltaY<0?1.1:0.9;scale=Math.max(0.15,Math.min(3,scale*f));upd()},{passive:false})
+window.addEventListener('mousedown',e=>{if(e.target.closest('.node'))return;drag=true;sx=e.clientX-panX;sy=e.clientY-panY;canvas.classList.add('grabbing')})
+window.addEventListener('mouseup',()=>{drag=false;canvas.classList.remove('grabbing')})
+async function carregar(){
+ try{
+  let fix=await fetch('/api/fixados').then(r=>r.json())
+  let arq=await fetch('/api/arquivos?limit=80').then(r=>r.json())
+  canvas.innerHTML=''
+  fix.forEach((f,i)=>addNode(f.nome,f.path||f.caminho,true,(i%8)*160,20,f))
+  let itens=(arq.itens||[]).filter(a=>a.nome!=='⬅️..')
+  itens.forEach((a,i)=>{let x=(i%8)*160+Math.random()*5;let y=140+Math.floor(i/8)*110;addNode(a.nome,a.caminho,false,x,y,a)})
+  document.getElementById('info').innerText=fix.length+' fixados | '+itens.length+' arquivos | pasta: '+arq.atual
+ }catch(e){document.getElementById('info').innerText='erro: '+e}
+}
+function addNode(nome,path,fixado,x,y,obj){
+ let d=document.createElement('div');d.className='node'+(fixado?' fixado':'');d.style.left=x+'px';d.style.top=y+'px'
+ let thumb=(obj&&obj.tem_thumb)?'<img src="/api/thumb'+path+'">':''
+ d.innerHTML=thumb+'<div class=t title="'+nome+'">'+nome+'</div><div style=margin-top:5px><button onclick="event.stopPropagation();fixar(''+path.replace(/'/g,"\'")+'')" style=font-size:9px>'+(fixado?'★':'☆')+'</button> '+(obj&&obj.is_dir?'<span style=font-size:9px>📁</span>':'')+'</div>'
+ let nx=0,ny=0,nd=false
+ d.addEventListener('mousedown',e=>{nd=true;nx=e.clientX-parseInt(d.style.left);ny=e.clientY-parseInt(d.style.top);e.stopPropagation()})
+ window.addEventListener('mouseup',()=>nd=false)
+ d.addEventListener('dblclick',()=>{if(obj&&obj.is_dir){location.href='/api/arquivos?caminho='+encodeURIComponent(path)}})
+ canvas.appendChild(d)
+}
+async function fixar(p){await fetch('/api/fixar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:p})});carregar()}
+carregar()
+</script></body></html>
